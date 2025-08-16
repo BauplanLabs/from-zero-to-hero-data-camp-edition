@@ -114,11 +114,11 @@ bauplan query "SELECT SUM(total_supplier_revenue) AS rev FROM top_selling_suppli
  uv marimo edit query_to_pandas.py
 ```
 
-Note: make sure to the edit the notebook cells with your own variables before running.
+Note: make sure to edit the notebook cells with your own variables before running.
 
 #### Use a BI tool
 
-You can also connect a BI tool compatible with Postgres. You can for example use a local Docker container with [Metabase] and visualize the table we just created. The configuration details for the connection to the sandbox are:
+You can also connect a BI tool compatible with Postgres. You can for example use a local Docker container with [Metabase](https://www.metabase.com/docs/latest/installation-and-operation/running-metabase-on-docker) and visualize the table we just created. The configuration details for the connection to the public sandbox are:
 
 ```text
 host: nlb.pub.bauplanlabs.us-east-1.computing.prod.bauplanlabs.com
@@ -140,7 +140,7 @@ cd src
 uv run automated_flow.py --namespace_suffix data_camp_auto
 ```
 
-The script executes the entire logic for you: these are the _same_ steps as we did above, but now they are embedded inside a standard Python flow:
+The script executes the entire logic for you: these are the _same_ steps as we did above, but now they are embedded inside a Python flow:
 
 * import [the files to tables](https://github.com/BauplanLabs/from-zero-to-hero-data-camp-edition/blob/86892980861ba6ad0466a0ced06d0ed32f35d3a7/src/automated_flow.py#L20) and merge into `main` to get to a ready staging zone;
 * run [the transformation pipeline](https://github.com/BauplanLabs/from-zero-to-hero-data-camp-edition/blob/86892980861ba6ad0466a0ced06d0ed32f35d3a7/src/automated_flow.py#L141) to get the final tables.
