@@ -1,0 +1,11 @@
+[project]
+name = "from-zero-to-hero-data-camp-edition"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bauplan>=0.0.3a437",
+    "marimo>=0.14.17",
+    "pandas>=2.3.1",
+]
