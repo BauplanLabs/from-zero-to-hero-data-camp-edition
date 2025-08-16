@@ -1,7 +1,6 @@
 import bauplan
 import datetime
 import re
-from data_quality_tests import are_there_nulls, expect_column_values_to_be_unique
 
 
 def construct_branch_name(branch_name: str):
@@ -91,13 +90,6 @@ def from_raw_to_staging(
 
     """
 
-    # create a namespace in case it does not exists
-    if not bpln_client.has_namespace(namespace=namespace, ref=import_branch):
-        namespace = bpln_client.create_namespace(
-            namespace=namespace, branch=import_branch
-        )
-        print(f"✅: Namespace {namespace} created successfully.")
-
     # import the files as Iceberg tables into the import branch
     for filename in list_of_tables_to_import:
         table_name = extract_table_name(filename)
@@ -110,39 +102,22 @@ def from_raw_to_staging(
             namespace=namespace,
         )
 
-    # Run data quality tests on the newly created tables before merging them into the main branch
+    # Run data quality tests before merging them into the main branch
     print("👀: Running data quality tests...")
 
-    # Check that there are no null values in the column transaction_line_item in the table transaction_line_item
-    # stop the pipeline from running if the test fails by asserting the test
-    _are_there_null_line_total = are_there_nulls(
-        client=bpln_client,
-        table_name="transaction_line_item",
-        column_to_check="line_total",
-        ingestion_branch=import_branch,
+    # Check that there are no null values in the column customer_product_id in the table product_data
+    null_rows = bpln_client.query(
+        query="SELECT customer_product_id FROM product_data WHERE customer_product_id IS NULL",
         namespace=namespace,
+        ref=import_branch,
     )
-    print(
-        f'Are there nulls "line_total" in table "transaction_line_item"? {_are_there_null_line_total}'
+    assert null_rows.row_count == 0, (
+        "🔴: There are null values in 'customer_product_id' column."
     )
-    assert not _are_there_null_line_total
-
-    # Check that the values of the colum transaction_line_item_id in the table transaction_line_item are unique
-    # stop the pipeline from running if the test fails by asserting the test
-    _are_transaction_ids_unique = expect_column_values_to_be_unique(
-        client=bpln_client,
-        table_name="transaction_line_item",
-        column_to_check="transaction_line_item_id",
-        ingestion_branch=import_branch,
-        namespace=namespace,
-    )
-    print(
-        f'Are transaction Ids in table "transaction_line_item" all unique? {_are_transaction_ids_unique}'
-    )
-    assert _are_transaction_ids_unique
-
     # merge the import branch into the main branch
-    bpln_client.merge_branch(source_ref=import_branch, into_branch="main")
+    assert bpln_client.merge_branch(source_ref=import_branch, into_branch="main"), (
+        "Something went wrong while merging the import branch into main."
+    )
     print(f"✅ Branch '{import_branch}' merged into main.")
 
 
@@ -179,11 +154,10 @@ def from_staging_to_applications(
         )
 
     # merge the branch of the insight layer into the main branch
-    try:
-        bpln_client.merge_branch(source_ref=transform_branch, into_branch="main")
-        print(f"✅ Branch '{transform_branch}' merged into main.")
-    except bauplan.errors.BauplanError as e:
-        print(f"🔴Error in branch {transform_branch} into main: {e}")
+    assert bpln_client.merge_branch(source_ref=transform_branch, into_branch="main"), (
+        "Something went wrong while merging the transform branch into main."
+    )
+    print(f"✅ Branch '{transform_branch}' merged into main.")
 
 
 def main():
@@ -209,11 +183,10 @@ def main():
     # construct the name of the import branch
     import_branch = construct_branch_name(branch_name=f"{username}.data_upload")
     # Create the import branch
-    try:
-        bpln_client.create_branch(branch=import_branch, from_ref="main")
-        print(f"✅ Branch '{import_branch}' created.")
-    except bauplan.errors.BauplanError as e:
-        print(f"Something went wrong while creating the transformation branch: {e}")
+    assert bpln_client.create_branch(branch=import_branch, from_ref="main"), (
+        "Something went wrong while creating the import branch"
+    )
+    print(f"✅ Branch '{import_branch}' created.")
 
     # import the raw data into the staging zone
     from_raw_to_staging(
@@ -230,11 +203,10 @@ def main():
     )
 
     # Create a raw import branch with a timestamp in the name
-    try:
-        bpln_client.create_branch(branch=transform_branch, from_ref="main")
-        print(f"✅ Branch '{transform_branch}' created.")
-    except bauplan.errors.BauplanError as e:
-        print(f"Something went wrong while creating the transformation branch: {e}")
+    assert bpln_client.create_branch(branch=transform_branch, from_ref="main"), (
+        "Something went wrong while creating the transformation branch"
+    )
+    print(f"✅ Branch '{transform_branch}' created.")
 
     # run the transformation pipeline from staging to marts and applications
     from_staging_to_applications(

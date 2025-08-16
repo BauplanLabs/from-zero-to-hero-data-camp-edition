@@ -1,9 +1,14 @@
-# Landing-staging-transform workflow
+# From zero to data hero (with Bauplan), Data Camp Edition
 
 ## Overview 
-This project is a bauplan implementation of a high level architecture divided in landing /staging / transformation architecture.
+This project implements a standard landing / staging / transformation architecture in Bauplan (sometimes called "Medallion"). In particular, you will learn:
 
-### Desired architecture 
+* the simplest way to _safely_ load "files" (in S3) into "tables": tables (but not files) can be branched, queries and governed, and they are the foundation of any serious data workload;
+* the simplest way to _safely_ go from source tables to refined data assets for business outcomes, e.g. tables to be visualized in BI tools, or dataset to be used by data scientists in their notebooks. This is accomplished writing pipelines, which are DAG of SQL and Python functions chained together.
+
+We distinguish between an interactive, manual flow, in which most operations are done through the Bauplan CLI, and an automated, scripted flow, in which the same operations are done through a Python script, using the Python SDK (which exposes nice, typed Python objects through no-nonsense APIs.)
+
+### Desired architecture at a glance 
 
 - Landing Zone (S3)
   - Archive and debugging store 
@@ -18,25 +23,8 @@ This project is a bauplan implementation of a high level architecture divided in
   - data pipelines
   - transformation and aggregation
 
-### Bauplan implementation  
-
-**- Landing zone (S3)** - Dump all the files in S3 - the ingestion and the connectors to get to this zone is outside the scope of this repo.
-
-**- Staging Zone (S3).** 
-- open an import branch
-- create Iceberg tables and import data
-- the import branch is then merged into main
-
-
-- **The Transform layer** 
-- open a transform branch
-- run a transformation pipeline and expectation tests 
-- merge into main 
-
-The branches remain open for future debug - this is an implementation preference. Rolling back is always possible because the platform provides automatic versioning upon commits  
-
-# Run the project 
 ## Setup
+
 ### Python environment
 We recommend using [uv](https://docs.astral.sh/uv/guides/install-python/) to manage the dependencies:
 
@@ -44,88 +32,107 @@ We recommend using [uv](https://docs.astral.sh/uv/guides/install-python/) to man
 uv sync
 ```
 
+Additional dependencies (on top of `bauplan`) are only necessary to run the code in `notebooks` at the end.
+
 ### Bauplan
 * [Join](https://app.bauplanlabs.com/sign-up) the bauplan sandbox, create your username and API key.
 * Complete do the 3-min [tutorial](https://docs.bauplanlabs.com/en/latest/tutorial/index.html) to get familiar with the platform.
-* When you gain access, public datasets (including the one used in this project) will be available for you to start building pipelines.
+
+## From landing to transformation: interactive mode
+
+### Step 0
+
+You need to set up your landing zone with some initial files, which is outside the scope of Bauplan (typically, your application will send events to S3 buckets through Kafka or similar mechanism). To simulate this step, we will add the csv files in the `data` folder to a public repo hosted by Bauplan and connected to our public sandbox - do [this](https://www.loom.com/share/9421861af03a4199bb1e75de16eb6ef8?sid=27e5689b-b43d-494d-a10c-96a438846bf1) for the three files in `data`, corresponding to three sample tables, `product_data`, `supplier_sku_lookup`, `supplier_sku_lookup`, and copy the S3 path that the app shows (this is were the files now are). Do not run the commands displayed there just yet!
+
+### Step 1: landing to staging
+
+Once the data landed in S3, we move *from files to tables*, using a Git-like pattern (a.k.a. Write-Audit-Publish): we create a data branch to sandbox our operations and import the table there. For the `product_data` table for example, this looks like this (remember to replace the placeholders with your values):
+
+```bash
+bauplan checkout main
+bauplan checkout -b <YOUR_USERNAME>.demodatacamp
+bauplan namespace create <YOUR_USERNAME>_data_camp
+bauplan table create \
+    --search-uri s3://<URL_FROM_THE_APP>/1755359275284_demo-data-2025-02-12-product_data.csv \
+    --name product_data --namespace <YOUR_USERNAME>_data_camp
+bauplan table import \
+    --search-uri s3://<URL_FROM_THE_APP>/1755359275284_demo-data-2025-02-12-product_data.csv \
+    --name product_data --namespace <YOUR_USERNAME>_data_camp
+```
+
+Note: we use namespaces to logically group your tables together. This may or may not be needed in the real-world, depending on your use case.
+
+To check that the data quality is what is expected, let's for example query the table and check no NULL are in the `customer_product_id` column:
+
+```bash
+bauplan query "SELECT COUNT(customer_product_id) FROM product_data WHERE customer_product_id IS NULL" --namespace <YOUR_USERNAME>_data_camp
+```
+
+If the check passes (count=0), we can "promote" the tables to the official staging zone on the `main` branch, similar to what we do with code branches in Git (your namespace will now be visible):
+
+```bash
+bauplan checkout main
+bauplan branch merge <YOUR_USERNAME>.demodatacamp
+bauplan namespace
+```
+
+<img src="img/landing_staging.jpg" alt="landing_staging.jpg" width="1000">
+
+### Step 2: staging to transformation
+
+Once the data is in the staging zone, we can run our transformation pipelines. This is where we apply business logic to the data, such as aggregations, joins, and other transformations. The pipeline is a two step DAG in `bpln_pipeline`:
+
+* step 1 (in SQL): build an intermediate table called `top_selling_products`;
+* step 2 (in Python): build a final table called `top_selling_suppliers` that aggregates the results of the first step and enriches it with additional data from the `supplier_sku_lookup` table.
+
+We will once again use branches to develop safely on production data, without affecting the main branch until we are ready to merge. Cd into `bpln_pipeline`, verify you are now on main with `bauplan branch`, then run the pipeline on a new branch:
+
+```bash
+cd bpln_pipeline
+bauplan branch
+bauplan checkout -b <YOUR_USERNAME>.transform_datacamp
+bauplan run --namespace <YOUR_USERNAME>_data_camp
+```
+
+<img src="img/staging_transform.jpg" alt="staging_transform.jpg" width="1000">
+
+Note: we may or may not merge here, but we don't by default to showcase that artifacts on branches can immediately be used and shared inside an organization before making a final decision to merge.
+
+### Step3 (optional): visualize final tables
+
+If you want to explore the final datasets, we have a few options.
+
+#### Run ad hoc queries in the CLI
+
+```bash
+bauplan query "SELECT SUM(supplier_revenue) FROM top_selling_suppliers" --namespace <YOUR_USERNAME>_data_camp
+```
+
+#### Use a Python notebook to explore the data
+
+```cd notebooks
+uv run query_to_pandas.py
+```
+
+Note: make sure to the edit the notebook cells with your own variables before running.
+
+#### Use a BI tool
+
+TBC
 
 
-## Run it
+
+## From landing to transformation: automation mode
+
+We now do the exact same operations, but scripted as a Python file which can be run in an automated way. This is useful for production pipelines, or for running the same operations multiple times.
 
 ```bash
 cd src 
 uv run end_to_end_flow.py
 ```
-The script executes the entire data pipeline (~150 lines of Python) from start to finish. Let's break it down step by step.
+The script executes the entire logic for u: the are the _same_ steps as we did above, but now they are embedded inside of a standard Python flow:
 
-### 🚀 High-Level Overview
-The process can be divided into **two main stages**:
-1. **Data Ingestion & Validation** → From the raw zone to the staging zone
-2. **Data Transformation** → from the staging zone to the insight/application layer
+* import the files to tables and merge into `main` to get to a ready staging zone LINK;
+* run the transformation pipeline to get the final tables LINK.
 
-### 🔍 Step-by-Step Breakdown
-### **1 Data Ingestion & Validation**
-- **The ingestion logic** is defined in the function `from_raw_to_staging` in the file `end_to_end_flow.py`
-    - **Imports raw files** into the system (S3).
-    - **Convert files to Iceberg tables** in a temporary import branch.
-    - **Run automated data quality tests** using `data_quality_tests.py`.
-    - **Validation check:**
-        - ✅ If tests **pass**, the data is merged into the **staging zone**.
-        - ❌ If tests **fail**, the branch remains open for debugging.
-      
-<img src="img/landing_staging.jpg" alt="landing_staging.jpg" width="1000">
-
-### **2 Data Transformation**
-- Once data is staged, it runs through the **transformation pipeline** using Bauplan.
-- The transformation logic is defined in the file `manual_pipeline/models.py`.
-- The pipeline enriches the data and creates mart tables that can be visualized as dashboards.
-- Showcase: the pipeline calls **OpenAI's API** for data enrichment - We ask `gpt-4` to create category tags from the products from the product descriptions and append them as a new column to the table `product_data`.
-- The output is stored as **new tables** in the insights layer: `top_selling_products` and `top_selling_suppliers`.
-
-
-<img src="img/staging_transform.jpg" alt="staging_transform.jpg" width="1000">
-
-
-### 📊 What Do We Get at the End?
-By the end of the process, we have **eight new tables** in the data lake:
-- **Imported tables:**
-    - `datacamp.product_data`
-    - `datacamp.supplier_sku_lookup`
-    - `datacamp.transaction_line_item`
-- **Transformed tables:**
-    - `datacamp.top_selling_products`
-    - `datacamp.top_selling_suppliers`
-You can verify the tables by running:
-```bash
-bauplan table --namespace datacamp
-```
-To explore the schema of the new tables run these commands in your terminal:
-```bash
-bauplan table get datacamp.product_data
-bauplan table get datacamp.supplier_sku_lookup
-bauplan table get datacamp.top_selling_products
-bauplan table get datacamp.top_selling_suppliers
-bauplan table get datacamp.transaction_line_item
-```
-
-### 🔎 Exploring and Querying Data
-If you want to explore the final datasets, simply run:
-```bash
-bauplan query "SELECT * FROM datacamp.product_data WHERE category_name == 'Retail'"
-bauplan query "SELECT * FROM datacamp.top_selling_suppliers"
-
-```
-This pipeline sets the foundation for **web-based dashboards**, **integration with Snowflake**, and **other analytics tools**.
-
-### Running the transformation pipeline with bauplan interactively
-To run the pipeline - i.e. the DAG going from the table imported to the final marts -- you just need to create a [data branch](https://docs.bauplanlabs.com/en/latest/concepts/branches.html).
-```bash
-cd src/manual_pipeline
-bauplan branch create <YOUR_USERNAME>.datacamp_dag
-bauplan branch checkout <YOUR_USERNAME>.datacamp_dag
-```
-You can now run the DAG:
-```bash
-bauplan run --namespace datacamp
-```
-You will notice that Bauplan stream back data in real-time, so every print statement you will be visualized in your terminal.
+Note that we did not to rewrite a single line of business logic, nor infrastructure code: going from development to production has never been easier!
