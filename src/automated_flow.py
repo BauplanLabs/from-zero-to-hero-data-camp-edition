@@ -143,7 +143,7 @@ def from_staging_to_applications(
         ref=transform_branch,
         namespace=namespace,
     )
-    print(f"This is the result for {run_state.job_id}: {run_state}")
+    print(f"This is the result for {run_state.job_id}: {run_state.job_status}")
     if run_state.job_status.lower() == "failed":
         raise Exception(
             f"Pipeline {run_state.job_id} run failed: {run_state.job_status}"

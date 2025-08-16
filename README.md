@@ -145,4 +145,4 @@ The script executes the entire logic for you: these are the _same_ steps as we d
 * import the files to tables and merge into `main` to get to a ready staging zone LINK;
 * run the transformation pipeline to get the final tables LINK.
 
-Note that we did not to rewrite a single line of business logic, nor infrastructure code: going from development to production has never been easier - this is a video of a successful automated run.
+Note that we did not to rewrite a single line of business logic, nor infrastructure code: going from development to production has never been easier - this is a [video of a successful automated run](https://www.loom.com/share/2c81b8384aa04b5b8e5f0180558457d6).
