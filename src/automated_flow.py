@@ -1,3 +1,4 @@
+import argparse
 import bauplan
 import datetime
 import re
@@ -111,14 +112,9 @@ def from_raw_to_staging(
         namespace=namespace,
         ref=import_branch,
     )
-    assert null_rows.row_count == 0, (
+    assert null_rows.num_rows == 0, (
         "🔴: There are null values in 'customer_product_id' column."
     )
-    # merge the import branch into the main branch
-    assert bpln_client.merge_branch(source_ref=import_branch, into_branch="main"), (
-        "Something went wrong while merging the import branch into main."
-    )
-    print(f"✅ Branch '{import_branch}' merged into main.")
 
 
 def from_staging_to_applications(
@@ -153,27 +149,23 @@ def from_staging_to_applications(
             f"Pipeline {run_state.job_id} run failed: {run_state.job_status}"
         )
 
-    # merge the branch of the insight layer into the main branch
-    assert bpln_client.merge_branch(source_ref=transform_branch, into_branch="main"), (
-        "Something went wrong while merging the transform branch into main."
-    )
-    print(f"✅ Branch '{transform_branch}' merged into main.")
 
-
-def main():
-    # Instantiate a bauplan client
-    bpln_client = bauplan.Client()
+def main(namespace_suffix: str, profile: str):
+    # Instantiate a bauplan client with specified profile
+    bpln_client = bauplan.Client(profile=profile)
 
     # get the username from the client
     username = bpln_client.info().user.username
 
     # Define the source s3 location for the Raw data
+    # We use the standard one for the sandbox, no need to customize this
     s3_source_folder = "s3://alpha-hello-bauplan/data_camp_demo_data/"
 
     # define namespace in the data catalog
-    namespace = "datacamp"
+    namespace = f"{username}_{namespace_suffix}"
 
     # Define the list of files that need to be imported as Iceberg tables
+    # We use the standard one for the sandbox, no need to customize this
     list_of_files = [
         "demo-data-2025-02-12-product_data.csv",
         "demo-data-2025-02-12-supplier_sku_lookup.csv",
@@ -196,6 +188,11 @@ def main():
         list_of_tables_to_import=list_of_files,
         namespace=namespace,
     )
+    # merge the import branch into the main branch
+    assert bpln_client.merge_branch(source_ref=import_branch, into_branch="main"), (
+        "Something went wrong while merging the import branch into main."
+    )
+    print(f"✅ Branch '{import_branch}' merged into main.")
 
     # construct the name of the transform branch
     transform_branch = construct_branch_name(
@@ -212,11 +209,28 @@ def main():
     from_staging_to_applications(
         bpln_client=bpln_client,
         transform_branch=transform_branch,
-        pipeline_folder="manual_pipeline",
+        pipeline_folder="bpln_pipeline",
         namespace=namespace,
     )
+    # Remember: here we do NOT merge back to main, as it is a sandbox
     print("🐬 So long and thanks for all the fish!")
+
+    return
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Automated Bauplan data flow")
+    parser.add_argument(
+        "--namespace_suffix",
+        type=str,
+        help="Suffix for the namespace (will be combined with username as {username}_{suffix})",
+    )
+    parser.add_argument(
+        "--profile",
+        type=str,
+        default="default",
+        help="Bauplan profile name (default: 'default')",
+    )
+
+    args = parser.parse_args()
+    main(args.namespace_suffix, args.profile)

@@ -19,13 +19,12 @@ def top_selling_suppliers(
 
     """
     import polars as pl
-    
+
     df_products = pl.from_arrow(top_selling_products)
     df_suppliers = pl.from_arrow(supplier_sku_lookup)
-    
+
     results_df = (
-        df_products
-        .join(df_suppliers, on="sku", how="inner")
+        df_products.join(df_suppliers, on="sku", how="inner")
         .group_by("supplier_name")
         .agg(pl.col("total_revenue").sum().alias("total_supplier_revenue"))
         .sort("total_supplier_revenue", descending=True)

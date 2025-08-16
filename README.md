@@ -105,22 +105,31 @@ If you want to explore the final datasets, we have a few options.
 #### Run ad hoc queries in the CLI
 
 ```bash
-bauplan query "SELECT SUM(supplier_revenue) FROM top_selling_suppliers" --namespace <YOUR_USERNAME>_data_camp
+bauplan query "SELECT SUM(total_supplier_revenue) AS rev FROM top_selling_suppliers" --namespace <YOUR_USERNAME>_data_camp
 ```
 
 #### Use a Python notebook to explore the data
 
 ```cd notebooks
-uv run query_to_pandas.py
+ uv marimo edit query_to_pandas.py
 ```
 
 Note: make sure to the edit the notebook cells with your own variables before running.
 
 #### Use a BI tool
 
-TBC
+You can also connect a BI tool compatible with Postgres. You can for example use a local Docker container with [Metabase] and visualize the table we just created. The configuration details for the connection to the sandbox are:
 
+```text
+host: nlb.pub.bauplanlabs.us-east-1.computing.prod.bauplanlabs.com
+port: 25432
+database: <YOUR_USERNAME>.transform_datacamp
+user: <YOUR_USERNAME>
+password: <YOUR_API_KEY>
+advanced settings (for metabase): preferQueryMode=simple
+```
 
+For a video walkthrough of the setup, see this [video](https://www.loom.com/share/1ad862ca7b7a454d8d91f05b97d29490?sid=33c96084-b36b-408b-8044-c4b672b60463) - note that passwords have been edited out.
 
 ## From landing to transformation: automation mode
 
@@ -128,11 +137,12 @@ We now do the exact same operations, but scripted as a Python file which can be 
 
 ```bash
 cd src 
-uv run end_to_end_flow.py
+uv run automated_flow.py --namespace_suffix data_camp_auto
 ```
-The script executes the entire logic for u: the are the _same_ steps as we did above, but now they are embedded inside of a standard Python flow:
+
+The script executes the entire logic for you: these are the _same_ steps as we did above, but now they are embedded inside a standard Python flow:
 
 * import the files to tables and merge into `main` to get to a ready staging zone LINK;
 * run the transformation pipeline to get the final tables LINK.
 
-Note that we did not to rewrite a single line of business logic, nor infrastructure code: going from development to production has never been easier!
+Note that we did not to rewrite a single line of business logic, nor infrastructure code: going from development to production has never been easier - this is a video of a successful automated run.
