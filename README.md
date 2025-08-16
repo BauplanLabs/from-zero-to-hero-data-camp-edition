@@ -142,7 +142,7 @@ uv run automated_flow.py --namespace_suffix data_camp_auto
 
 The script executes the entire logic for you: these are the _same_ steps as we did above, but now they are embedded inside a standard Python flow:
 
-* import the files to tables and merge into `main` to get to a ready staging zone LINK;
-* run the transformation pipeline to get the final tables LINK.
+* import [the files to tables](https://github.com/BauplanLabs/from-zero-to-hero-data-camp-edition/blob/86892980861ba6ad0466a0ced06d0ed32f35d3a7/src/automated_flow.py#L20) and merge into `main` to get to a ready staging zone;
+* run [the transformation pipeline](https://github.com/BauplanLabs/from-zero-to-hero-data-camp-edition/blob/86892980861ba6ad0466a0ced06d0ed32f35d3a7/src/automated_flow.py#L141) to get the final tables.
 
 Note that we did not to rewrite a single line of business logic, nor infrastructure code: going from development to production has never been easier - this is a [video of a successful automated run](https://www.loom.com/share/2c81b8384aa04b5b8e5f0180558457d6).
