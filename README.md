@@ -42,11 +42,11 @@ Additional dependencies (on top of `bauplan`) are only necessary to run the code
 
 ### Step 0
 
-You need to set up your landing zone with some initial files, which is outside the scope of Bauplan (typically, your application will send events to S3 buckets through Kafka or similar mechanism). To simulate this step, we will add the csv files in the `data` folder to a public repo hosted by Bauplan and connected to our public sandbox - do [this](https://www.loom.com/share/9421861af03a4199bb1e75de16eb6ef8?sid=27e5689b-b43d-494d-a10c-96a438846bf1) for the three files in `data`, corresponding to three sample tables, `product_data`, `supplier_sku_lookup`, `supplier_sku_lookup`, and copy the S3 path that the app shows (this is were the files now are). Do not run the commands displayed there just yet!
+You need to set up your landing zone with some initial files, which is outside the scope of Bauplan (typically, your application will send events to S3 buckets through Kafka or similar mechanism). To simulate this step, we will add the csv files in the `data` folder to a public repo hosted by Bauplan and connected to our public sandbox - do [this](https://www.loom.com/share/9421861af03a4199bb1e75de16eb6ef8?sid=27e5689b-b43d-494d-a10c-96a438846bf1) for the three files in `data`, corresponding to three sample tables, `product_data`, `supplier_sku_lookup`, `transaction_line_item`, and copy the S3 path that the app shows (this is were the files now are). Do not run the commands displayed there just yet!
 
 ### Step 1: landing to staging
 
-Once the data landed in S3, we move *from files to tables*, using a Git-like pattern (a.k.a. Write-Audit-Publish): we create a data branch to sandbox our operations and import the three source tables there, i.e. `product_data`, `supplier_sku_lookup`, `supplier_sku_lookup`. For the `product_data` table for example, this looks like this (remember to replace the placeholders with your values):
+Once the data landed in S3, we move *from files to tables*, using a Git-like pattern (a.k.a. Write-Audit-Publish): we create a data branch to sandbox our operations and import the three source tables there, i.e. `product_data`, `supplier_sku_lookup`, `transaction_line_item`. For the `product_data` table for example, this looks like this (remember to replace the placeholders with your values):
 
 ```bash
 bauplan checkout main
@@ -60,7 +60,7 @@ bauplan table import \
     --name product_data --namespace <YOUR_USERNAME>_data_camp
 ```
 
-You should then repeat `table create` and `table import` for the other two tables, `supplier_sku_lookup` and `supplier_sku_lookup`, using the same namespace, and just replacing the S3 path with the one corresponding to the other files.
+You should then repeat `table create` and `table import` for the other two tables, `supplier_sku_lookup` and `transaction_line_item`, using the same namespace, and just replacing the S3 path with the one corresponding to the other files.
 
 Note: we use namespaces to logically group your tables together. This may or may not be needed in the real-world, depending on your use case.
 
