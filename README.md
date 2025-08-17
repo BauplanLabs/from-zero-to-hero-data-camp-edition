@@ -46,7 +46,7 @@ You need to set up your landing zone with some initial files, which is outside t
 
 ### Step 1: landing to staging
 
-Once the data landed in S3, we move *from files to tables*, using a Git-like pattern (a.k.a. Write-Audit-Publish): we create a data branch to sandbox our operations and import the table there. For the `product_data` table for example, this looks like this (remember to replace the placeholders with your values):
+Once the data landed in S3, we move *from files to tables*, using a Git-like pattern (a.k.a. Write-Audit-Publish): we create a data branch to sandbox our operations and import the three source tables there, i.e. `product_data`, `supplier_sku_lookup`, `supplier_sku_lookup`. For the `product_data` table for example, this looks like this (remember to replace the placeholders with your values):
 
 ```bash
 bauplan checkout main
@@ -59,6 +59,8 @@ bauplan table import \
     --search-uri s3://<URL_FROM_THE_APP>/1755359275284_demo-data-2025-02-12-product_data.csv \
     --name product_data --namespace <YOUR_USERNAME>_data_camp
 ```
+
+You should then repeat `table create` and `table import` for the other two tables, `supplier_sku_lookup` and `supplier_sku_lookup`, using the same namespace, and just replacing the S3 path with the one corresponding to the other files.
 
 Note: we use namespaces to logically group your tables together. This may or may not be needed in the real-world, depending on your use case.
 
