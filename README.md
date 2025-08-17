@@ -113,7 +113,7 @@ bauplan query "SELECT SUM(total_supplier_revenue) AS rev FROM top_selling_suppli
 #### Use a Python notebook to explore the data
 
 ```cd notebooks
- uv marimo edit query_to_pandas.py
+ uv run marimo edit query_to_pandas.py
 ```
 
 Note: make sure to edit the notebook cells with your own variables before running.
